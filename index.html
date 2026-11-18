@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listen Novel</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #100e19;
+  color: white;
+}
+
+header {
+  background: #211936;
+  padding: 22px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  color: #c4a5ff;
+}
+
+header p {
+  color: #c9bfdc;
+}
+
+.container {
+  max-width: 650px;
+  margin: auto;
+  padding: 18px;
+}
+
+.card {
+  background: #201c2e;
+  padding: 18px;
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+
+h2 {
+  color: #c4a5ff;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 13px;
+  margin: 8px 0;
+  border-radius: 9px;
+  border: 1px solid #514567;
+  background: #151222;
+  color: white;
+}
+
+textarea {
+  min-height: 150px;
+}
+
+button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 9px;
+  background: #b69aff;
+  color: #171123;
+  font-weight: bold;
+  margin: 5px 3px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #39304e;
+  color: white;
+}
+
+.novel {
+  padding: 12px;
+  margin: 8px 0;
+  background: #302941;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+#story {
+  line-height: 1.9;
+  white-space: pre-wrap;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  color: #aaa;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🎧 Listen Novel</h1>
+  <p>Your stories, your voice, your world.</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>📚 Novel Library</h2>
+    <div id="library"></div>
+    <button onclick="showEditor()">+ Add Novel</button>
+  </div>
+
+  <div class="card" id="editor" style="display:none">
+    <h2>Add Your Novel</h2>
+
+    <input id="title" placeholder="Novel title">
+
+    <input id="chapter" placeholder="Chapter name">
+
+    <textarea id="content"
+      placeholder="Paste your novel here..."></textarea>
+
+    <button onclick="saveNovel()">Save Novel</button>
+    <button class="secondary"
+      onclick="hideEditor()">Cancel</button>
+  </div>
+
+  <div class="card">
+    <h2 id="novelTitle">Welcome to Listen Novel</h2>
+
+    <p id="chapterTitle">Select a novel to begin.</p>
+
+    <div id="story">
+      Your stories will appear here.
+    </div>
+
+    <br>
+
+    <button onclick="playNovel()">▶ Play</button>
+    <button class="secondary" onclick="pauseNovel()">Ⅱ Pause</button>
+    <button class="secondary" onclick="resumeNovel()">▶ Resume</button>
+    <button class="secondary" onclick="stopNovel()">■ Stop</button>
+
+    <h3>Narration Speed</h3>
+
+    <select id="speed">
+      <option value="0.7">0.7x Slow</option>
+      <option value="1" selected>1x Normal</option>
+      <option value="1.2">1.2x Fast</option>
+      <option value="1.5">1.5x Faster</option>
+      <option value="1.8">1.8x Very Fast</option>
+    </select>
+
+    <h3>Voice</h3>
+    <select id="voice"></select>
+
+    <p id="status">Ready to listen.</p>
+  </div>
+
+</div>
+
+<footer>
+  Listen Novel © 2026
+</footer>
+
+<script>
+let novels = JSON.parse(
+  localStorage.getItem("novels") || "[]"
+);
+
+let selectedNovel = null;
+
+function showEditor() {
+  document.getElementById("editor").style.display = "block";
+}
+
+function hideEditor() {
+  document.getElementById("editor").style.display = "none";
+}
+
+function saveNovel() {
+  let title = document.getElementById("title").value.trim();
+  let chapter = document.getElementById("chapter").value.trim();
+  let content = document.getElementById("content").value.trim();
+
+  if (!title || !content) {
+    alert("Please enter a title and story.");
+    return;
+  }
+
+  novels.push({
+    title: title,
+    chapter: chapter || "Chapter 1",
+    content: content
+  });
+
+  localStorage.setItem("novels", JSON.stringify(novels));
+
+  document.getElementById("title").value = "";
+  document.getElementById("chapter").value = "";
+  document.getElementById("content").value = "";
+
+  hideEditor();
+  renderLibrary();
+}
+
+function renderLibrary() {
+  let library = document.getElementById("library");
+  library.innerHTML = "";
+
+  novels.forEach((novel, index) => {
+    let item = document.createElement("div");
+    item.className = "novel";
+
+    let name = document.createElement("strong");
+    name.textContent = novel.title;
+
+    let chapter = document.createElement("div");
+    chapter.textContent = novel.chapter;
+
+    item.append(name, chapter);
+    item.onclick = () => selectNovel(index);
+
+    library.appendChild(item);
+  });
+}
+
+function selectNovel(index) {
+  stopNovel();
+
+  selectedNovel = novels[index];
+
+  document.getElementById("novelTitle").textContent =
+    selectedNovel.title;
+
+  document.getElementById("chapterTitle").textContent =
+    selectedNovel.chapter;
+
+  document.getElementById("story").textContent =
+    selectedNovel.content;
+
+  document.getElementById("status").textContent =
+    "Novel selected. Ready to listen.";
+}
+
+function playNovel() {
+  if (!selectedNovel) {
+    alert("Please select a novel first!");
+    return;
+  }
+
+  if (!("speechSynthesis" in window)) {
+    alert("Text-to-speech is not supported in this browser.");
+    return;
+  }
+
+  stopNovel();
+
+  let speech = new SpeechSynthesisUtterance(
+    selectedNovel.content
+  );
+
+  speech.rate = Number(
+    document.getElementById("speed").value
+  );
+
+  let voiceIndex = document.getElementById("voice").value;
+  let voices = speechSynthesis.getVoices();
+
+  if (voiceIndex !== "") {
+    speech.voice = voices[Number(voiceIndex)];
+  }
+
+  speech.onstart = () => {
+    document.getElementById("status").textContent =
+      "Now playing...";
+  };
+
+  speech.onend = () => {
+    document.getElementById("status").textContent =
+      "Finished listening.";
+  };
+
+  window.currentSpeech = speech;
+  speechSynthesis.speak(speech);
+}
+
+function pauseNovel() {
+  speechSynthesis.pause();
+  document.getElementById("status").textContent = "Paused.";
+}
+
+function resumeNovel() {
+  speechSynthesis.resume();
+  document.getElementById("status").textContent = "Resumed.";
+}
+
+function stopNovel() {
+  if ("speechSynthesis" in window) {
+    speechSynthesis.cancel();
+  }
+}
+
+function loadVoices() {
+  let voiceSelect = document.getElementById("voice");
+  let voices = speechSynthesis.getVoices();
+
+  voiceSelect.innerHTML = "";
+
+  voices.forEach((voice, index) => {
+    let option = document.createElement("option");
+    option.value = index;
+    option.textContent = voice.name + " (" + voice.lang + ")";
+    voiceSelect.appendChild(option);
+  });
+}
+
+if ("speechSynthesis" in window) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+renderLibrary();
+</script>
+
+</body>
+  </html>
+    
